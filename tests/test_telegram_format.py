@@ -1,4 +1,29 @@
-from app.telegram_bot import format_news_message
+import asyncio
+
+from app.telegram_bot import format_news_message, send_news_to_chat
+
+
+def test_send_news_to_chat_sends_to_configured_chat():
+    calls = []
+
+    class DummyBot:
+        async def send_message(self, chat_id, text, disable_web_page_preview=False):
+            calls.append({"chat_id": chat_id, "text": text, "disable_web_page_preview": disable_web_page_preview})
+
+    item = {
+        "title": "Новая новость",
+        "text": "Отправка в Telegram работает корректно.",
+        "source": "ЧП Камчатка",
+        "url": "https://example.com/post/2",
+        "published_at": "2026-10-23T05:55:00+00:00",
+        "keywords": ["елизово"],
+    }
+
+    asyncio.run(send_news_to_chat(DummyBot(), [item], chat_id=-1001234567890))
+
+    assert len(calls) == 1
+    assert calls[0]["chat_id"] == -1001234567890
+    assert "Новая новость" in calls[0]["text"]
 
 
 def test_format_news_message_contains_expected_sections():
