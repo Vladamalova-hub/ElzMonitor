@@ -44,6 +44,62 @@ def clean_html(value: str | None) -> str:
     return text.strip()
 
 
+def prune_noise(soup: BeautifulSoup) -> BeautifulSoup:
+    for selector in [
+        "nav",
+        "header",
+        "footer",
+        "aside",
+        "form",
+        "script",
+        "style",
+        ".menu",
+        ".sidebar",
+        ".breadcrumbs",
+        ".social",
+        ".related",
+        ".widget",
+    ]:
+        for tag in soup.select(selector):
+            tag.decompose()
+    return soup
+
+
+def extract_best_content_block(soup: BeautifulSoup) -> tuple[str, str]:
+    candidates = []
+    selectors = [
+        "article",
+        "main",
+        ".post-content",
+        ".entry-content",
+        ".news-content",
+        ".article-body",
+        ".story-body",
+        ".content",
+        "#content",
+        ".text",
+    ]
+
+    for selector in selectors:
+        for tag in soup.select(selector):
+            if tag.name in {"nav", "header", "footer", "aside"}:
+                continue
+            text = clean_html(tag.get_text(" ", strip=True))
+            if len(text) > 150:
+                candidates.append((tag, text))
+
+    if not candidates:
+        body = clean_html(soup.get_text(" ", strip=True))
+        return "", body
+
+    best_tag, best_text = max(candidates, key=lambda pair: len(pair[1]))
+    title = ""
+    title_tag = best_tag.select_one("h1, h2, h3")
+    if title_tag:
+        title = clean_html(title_tag.get_text(" ", strip=True))
+    return title, best_text
+
+
 async def fetch_text(url: str) -> str:
     async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT, follow_redirects=True) as client:
         response = await client.get(url)
@@ -58,14 +114,12 @@ async def parse_source(source: Any) -> list[NewsItem]:
         return []
 
     soup = BeautifulSoup(page, "html.parser")
-    texts = []
+    prune_noise(soup)
 
-    for tag in soup.select("article, .post, .news-item, .entry, .item, .story, .content, .news, .post-item"):
-        title_tag = tag.select_one("h1, h2, h3, a, .title, .headline")
-        title = clean_html(title_tag.get_text(" ", strip=True)) if title_tag else ""
-        text = clean_html(tag.get_text(" ", strip=True))
-        if title or text:
-            texts.append((title, text))
+    title, text = extract_best_content_block(soup)
+    texts = []
+    if title or text:
+        texts.append((title, text))
 
     if not texts:
         title = clean_html(soup.title.get_text(" ", strip=True)) if soup.title else ""
