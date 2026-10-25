@@ -1,6 +1,16 @@
-# Камчатский медиамониторинг
+# ElzMonitor
 
-Проект для сбора новостей по ключевым словам с сайтов, Telegram, Max и VK с единой авторизацией.
+ElzMonitor — это проект мониторинга новостей по ключевым словам. Он собирает публикации из разных источников, фильтрует их по словам и источникам, показывает их в одном интерфейсе и отправляет в Telegram.
+
+## Что умеет проект
+
+- сбор новостей с сайтов, Telegram-каналов, Max и VK
+- фильтрация по ключевым словам
+- фильтрация по источнику
+- единая страница со всеми новостями
+- авторизация через один логин и пароль
+- Telegram-бот с уведомлениями
+- автоматическое обновление каждые 10 минут
 
 ## Быстрый запуск локально
 
@@ -28,9 +38,9 @@ cd '/Users/a111/Downloads/Новая папка'
 python3 bot_main.py
 ```
 
-## Запуск 24/7 на сервере
+## Запуск на Render
 
-Для Render/другого хостинга используйте команду:
+Используйте команду:
 
 ```bash
 bash start.sh
@@ -46,8 +56,37 @@ bash start.sh
 ```env
 APP_LOGIN=admin
 APP_PASSWORD=change-me
-APP_TITLE=Камчатский медиамониторинг
+APP_TITLE=ElzMonitor
 BASE_URL=http://localhost:8000
-TG_BOT_TOKEN=...
-SCRAPE_INTERVAL_MINUTES=15
+TG_BOT_TOKEN=your_telegram_bot_token_here
+SCRAPE_INTERVAL_MINUTES=10
 ```
+
+## GitHub
+
+```bash
+git remote add origin https://github.com/ВАШ_ЛОГИН/ElzMonitor.git
+git branch -M main
+git push -u origin main
+```
+
+## Render
+
+После загрузки проекта в GitHub:
+
+1. Создать новый Web Service в Render
+2. Подключить GitHub-репозиторий ElzMonitor
+3. Выбрать Python
+4. В Environment Variables добавить:
+   - `APP_LOGIN`
+   - `APP_PASSWORD`
+   - `APP_TITLE`
+   - `BASE_URL`
+   - `TG_BOT_TOKEN`
+   - `SCRAPE_INTERVAL_MINUTES`
+5. Стартовая команда: `bash start.sh`
+
+## Примечание
+
+Локальный файл `.env` не должен попадать в GitHub. Используйте `.env.example` как шаблон, а секреты храните в Render или GitHub Secrets.
+
