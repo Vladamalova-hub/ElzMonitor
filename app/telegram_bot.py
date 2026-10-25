@@ -95,7 +95,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         context.user_data["authorized"] = True
     await update.message.reply_text(
         f"{APP_TITLE}\n\nВведите логин и пароль через /login <логин> <пароль>\n"
-        "Пример: /login admin change-me"
     )
 
 
