@@ -82,8 +82,6 @@ def format_news_message(item: dict, delivery_seconds: int = 0) -> str:
         f"{title}\n\n"
         f"{preview}\n\n"
         f"🔑 Найдено: {keyword_text}\n"
-        f"🕐 {timestamp_text}\n"
-        f"⏱ Доставлено за {formatted_elapsed}\n\n"
         f"Читать полностью: {url}"
     )
     return message
