@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
-from telegram import Update
+from telegram import BotCommand, Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 
 from app.config import APP_LOGIN, APP_PASSWORD, APP_TITLE, SCRAPE_INTERVAL_MINUTES, TG_BOT_TOKEN, TG_CHAT_ID
@@ -94,6 +94,18 @@ async def refresh(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(f"Готово. Добавлено новостей: {count}")
 
 
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    commands = (
+        "Команды бота:\n"
+        "/start — приветствие\n"
+        "/login <логин> <пароль> — вход\n"
+        "/news — последние новости\n"
+        "/refresh — обновить ленту и отправить свежие новости\n"
+        "/help — список команд"
+    )
+    await update.message.reply_text(commands)
+
+
 async def auto_refresh_news(context: ContextTypes.DEFAULT_TYPE) -> None:
     count = await run_refresh()
     if count <= 0:
@@ -114,20 +126,34 @@ async def news(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text(message, disable_web_page_preview=False)
 
 
+async def post_init(application: Application) -> None:
+    await application.bot.set_my_commands(
+        [
+            BotCommand("start", "Показать приветствие"),
+            BotCommand("login", "Войти в бота"),
+            BotCommand("news", "Показать новости"),
+            BotCommand("refresh", "Обновить ленту"),
+            BotCommand("help", "Список команд"),
+        ]
+    )
+
+
 def build_app() -> Application | None:
     if not TG_BOT_TOKEN:
         return None
     application = Application.builder().token(TG_BOT_TOKEN).build()
+    application.post_init = post_init
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("login", login))
     application.add_handler(CommandHandler("refresh", refresh))
     application.add_handler(CommandHandler("news", news))
+    application.add_handler(CommandHandler("help", help_command))
 
     if TG_CHAT_ID:
         application.job_queue.run_repeating(
             auto_refresh_news,
             interval=SCRAPE_INTERVAL_MINUTES * 60,
-            first=60,
+            first=30,
             name="news_refresh",
         )
 
