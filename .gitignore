@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+
+# IDE / OS
+.DS_Store
+.vscode/
+.idea/
+
+# Tests / caches
+.pytest_cache/
+.coverage
+htmlcov/
+
+# App runtime
+*.log
+/data/
+!data/.gitkeep
