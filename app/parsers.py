@@ -5,6 +5,7 @@ import html
 import re
 from datetime import datetime, timezone
 from typing import Any
+from urllib.parse import urljoin
 
 import httpx
 from bs4 import BeautifulSoup
@@ -14,6 +15,24 @@ from app.keywords import find_keyword_hits
 from app.sources import SOURCE_LIST
 
 REQUEST_TIMEOUT = 20.0
+
+
+def resolve_article_url(soup: BeautifulSoup, source_url: str) -> str:
+    candidates = []
+    for link in soup.select("a[href]"):
+        href = (link.get("href") or "").strip()
+        if not href or href.startswith("javascript:"):
+            continue
+        absolute_url = urljoin(source_url, href)
+        if absolute_url == source_url:
+            continue
+        if absolute_url.startswith("http"):
+            candidates.append(absolute_url)
+
+    for candidate in candidates:
+        if "telegram.me" in candidate or "/post/" in candidate or "/news/" in candidate or "/article/" in candidate:
+            return candidate
+    return source_url
 
 
 def clean_html(value: str | None) -> str:
@@ -54,6 +73,7 @@ async def parse_source(source: Any) -> list[NewsItem]:
         if title or body:
             texts.append((title, body))
 
+    article_url = resolve_article_url(soup, source.url)
     result: list[NewsItem] = []
     for title, text in texts:
         combined = f"{title} {text}".strip()
@@ -66,7 +86,7 @@ async def parse_source(source: Any) -> list[NewsItem]:
                 text=combined[:2000],
                 source=source.name,
                 source_url=source.url,
-                url=source.url,
+                url=article_url,
                 published_at=datetime.now(timezone.utc).isoformat(),
                 keywords=hits,
                 raw_json={"source_type": source.source_type},
