@@ -6,9 +6,34 @@ from typing import Any
 from telegram import BotCommand, Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 
-from app.config import APP_LOGIN, APP_PASSWORD, APP_TITLE, SCRAPE_INTERVAL_MINUTES, TG_BOT_TOKEN, TG_CHAT_ID
+from app.config import (
+    ALLOWED_TELEGRAM_USER_IDS,
+    APP_LOGIN,
+    APP_PASSWORD,
+    APP_TITLE,
+    SCRAPE_INTERVAL_MINUTES,
+    TG_BOT_TOKEN,
+    TG_CHAT_ID,
+)
 from app.db import latest_news
 from app.refresh import run_refresh
+
+
+def is_user_allowed(user_id: int | None) -> bool:
+    if not ALLOWED_TELEGRAM_USER_IDS:
+        return True
+    return user_id is not None and user_id in ALLOWED_TELEGRAM_USER_IDS
+
+
+async def ensure_user_authorized(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    user_id = update.effective_user.id if update.effective_user else None
+    if context.user_data.get("authorized"):
+        return True
+    if is_user_allowed(user_id):
+        context.user_data["authorized"] = True
+        return True
+    await update.message.reply_text("Сначала выполните /login <логин> <пароль>.")
+    return False
 
 
 async def send_news_to_chat(bot: Any, items: list[dict], chat_id: str | int | None = None) -> int:
@@ -65,6 +90,9 @@ def format_news_message(item: dict, delivery_seconds: int = 0) -> str:
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user_id = update.effective_user.id if update.effective_user else None
+    if is_user_allowed(user_id):
+        context.user_data["authorized"] = True
     await update.message.reply_text(
         f"{APP_TITLE}\n\nВведите логин и пароль через /login <логин> <пароль>\n"
         "Пример: /login admin change-me"
@@ -72,12 +100,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def login(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user_id = update.effective_user.id if update.effective_user else None
     args = context.args
     if len(args) != 2:
         await update.message.reply_text("Использование: /login <логин> <пароль>")
         return
     username, password = args
     if username == APP_LOGIN and password == APP_PASSWORD:
+        if ALLOWED_TELEGRAM_USER_IDS and not is_user_allowed(user_id):
+            await update.message.reply_text("Ваш Telegram ID не входит в список разрешённых пользователей.")
+            return
         context.user_data["authorized"] = True
         await update.message.reply_text("Доступ открыт. Используйте /news для просмотра последних новостей.")
     else:
@@ -85,8 +117,7 @@ async def login(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def refresh(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not context.user_data.get("authorized"):
-        await update.message.reply_text("Сначала выполните /login <логин> <пароль>.")
+    if not await ensure_user_authorized(update, context):
         return
     await update.message.reply_text("Обновляю ленту по доступным источникам...")
     count = await run_refresh()
@@ -114,8 +145,7 @@ async def auto_refresh_news(context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def news(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not context.user_data.get("authorized"):
-        await update.message.reply_text("Сначала выполните /login <логин> <пароль>.")
+    if not await ensure_user_authorized(update, context):
         return
     items = latest_news(10)
     if not items:
