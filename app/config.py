@@ -11,4 +11,9 @@ APP_TITLE = os.getenv("APP_TITLE", "Камчатский медиамонито�
 BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
 TG_BOT_TOKEN = os.getenv("TG_BOT_TOKEN", "")
 TG_CHAT_ID = os.getenv("TG_CHAT_ID") or os.getenv("TELEGRAM_CHAT_ID", "")
+ALLOWED_TELEGRAM_USER_IDS = [
+    int(item.strip())
+    for item in (os.getenv("ALLOWED_TELEGRAM_USER_IDS", "") or os.getenv("TG_ALLOWED_USERS", "")).split(",")
+    if item.strip()
+]
 SCRAPE_INTERVAL_MINUTES = int(os.getenv("SCRAPE_INTERVAL_MINUTES", "5"))
